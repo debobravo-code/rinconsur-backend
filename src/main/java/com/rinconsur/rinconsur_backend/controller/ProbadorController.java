@@ -176,5 +176,30 @@ public class ProbadorController {
                 probadorRepository.save(probador));
     }
 
+    @PatchMapping("/{id}/liberar")
+    public ResponseEntity<Probador> liberar(
+            @PathVariable Integer id) {
+
+        Probador probador = probadorRepository
+                .findById(id).orElse(null);
+
+        if (probador == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (probador.getEstado() != EstadoProbador.OCUPADO) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT).build();
+        }
+
+        probador.setEstado(EstadoProbador.LIBRE);
+        probador.setInicioOcupacion(null);
+        probador.setCantidadPrendas(0);
+
+        return ResponseEntity.ok(
+                probadorRepository.save(probador));
+    }
+
+
 }
 
