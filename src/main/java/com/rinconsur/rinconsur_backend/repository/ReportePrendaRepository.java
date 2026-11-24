@@ -14,12 +14,15 @@ public interface ReportePrendaRepository
 
     List<ReportePrenda> findAllByOrderByFechaMillisDesc();
 
-    List<ReportePrenda> findByProbadorIdOrderByFechaMillisDesc(
+    List<ReportePrenda>
+        findByProbadorIdOrderByFechaMillisDesc(
             Integer probadorId);
 
     boolean existsByProbadorId(Integer probadorId);
 
-    List<ReportePrenda> findByFechaMillisBetweenOrderByFechaMillisDesc(
-            Long desde,
-            Long hasta);
+    List<ReportePrenda>
+        findByFechaMillisBetweenOrderByFechaMillisDesc(
+            Long desde, Long hasta);
+
+    boolean existsByFotoUri(String fotoUri);
 }
