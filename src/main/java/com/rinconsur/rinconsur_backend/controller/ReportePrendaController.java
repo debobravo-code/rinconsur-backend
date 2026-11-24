@@ -9,6 +9,7 @@ import com.rinconsur.rinconsur_backend.repository.ProbadorRepository;
 import com.rinconsur.rinconsur_backend.dto.ReportePrendaRequest;
 import com.rinconsur.rinconsur_backend.service.RegistroOcupacionService;
 import com.rinconsur.rinconsur_backend.service.FotoReferenciaService;
+import com.rinconsur.rinconsur_backend.service.FotoLimpiezaService;
 
 import jakarta.validation.Valid;
 
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/reportes-prenda")
@@ -27,17 +29,20 @@ public class ReportePrendaController {
     private final ProbadorRepository probadorRepository;
     private final RegistroOcupacionService registroService;
     private final FotoReferenciaService fotoReferenciaService;
+    private final FotoLimpiezaService fotoLimpiezaService;
 
     public ReportePrendaController(
             ReportePrendaRepository reporteRepository,
             ProbadorRepository probadorRepository,
             RegistroOcupacionService registroService,
-            FotoReferenciaService fotoReferenciaService) {
+            FotoReferenciaService fotoReferenciaService,
+            FotoLimpiezaService fotoLimpiezaService) {
 
         this.reporteRepository = reporteRepository;
         this.probadorRepository = probadorRepository;
         this.registroService = registroService;
         this.fotoReferenciaService = fotoReferenciaService;
+        this.fotoLimpiezaService = fotoLimpiezaService;
     }
 
     @GetMapping
@@ -146,26 +151,46 @@ public class ReportePrendaController {
             return ResponseEntity.badRequest().build();
         }
 
-        String fotoUri = fotoReferenciaService
+        String fotoAnterior = reporte.getFotoUri();
+
+        String fotoNueva = fotoReferenciaService
                 .validar(request.fotoUri());
 
         reporte.setProbadorId(request.probadorId());
         reporte.setDescripcion(request.descripcion().trim());
-        reporte.setFotoUri(fotoUri);
+        reporte.setFotoUri(fotoNueva);
 
-        return ResponseEntity.ok(
-                reporteRepository.save(reporte));
+        ReportePrenda actualizado =
+                reporteRepository.save(reporte);
+
+        if (!Objects.equals(fotoAnterior, fotoNueva)) {
+
+            fotoLimpiezaService
+                    .limpiarDespuesDeCommit(fotoAnterior);
+        }
+
+        return ResponseEntity.ok(actualizado);
     }
 
+    @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(
             @PathVariable Integer id) {
 
-        if (!reporteRepository.existsById(id)) {
+        ReportePrenda reporte = reporteRepository
+                .findById(id)
+                .orElse(null);
+
+        if (reporte == null) {
             return ResponseEntity.notFound().build();
         }
 
-        reporteRepository.deleteById(id);
+        String fotoAnterior = reporte.getFotoUri();
+
+        reporteRepository.delete(reporte);
+
+        fotoLimpiezaService
+                .limpiarDespuesDeCommit(fotoAnterior);
 
         return ResponseEntity.noContent().build();
     }
