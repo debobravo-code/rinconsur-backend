@@ -2,18 +2,21 @@
 package com.rinconsur.rinconsur_backend.controller;
 
 import com.rinconsur.rinconsur_backend.dto.OcupacionRequest;
-
 import com.rinconsur.rinconsur_backend.dto.EstadoProbadorRequest;
 
 import com.rinconsur.rinconsur_backend.model.Probador;
 import com.rinconsur.rinconsur_backend.model.EstadoProbador;
+
 import com.rinconsur.rinconsur_backend.repository.ProbadorRepository;
 import com.rinconsur.rinconsur_backend.repository.SedeRepository;
+
+import com.rinconsur.rinconsur_backend.service.RegistroOcupacionService;
 
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,13 +27,16 @@ public class ProbadorController {
 
     private final ProbadorRepository probadorRepository;
     private final SedeRepository sedeRepository;
+    private final RegistroOcupacionService registroService;
 
     public ProbadorController(
             ProbadorRepository probadorRepository,
-            SedeRepository sedeRepository) {
+            SedeRepository sedeRepository,
+            RegistroOcupacionService registroService) {
 
         this.probadorRepository = probadorRepository;
         this.sedeRepository = sedeRepository;
+        this.registroService = registroService;
     }
 
     @GetMapping
@@ -177,6 +183,7 @@ public class ProbadorController {
                 probadorRepository.save(probador));
     }
 
+    @Transactional
     @PatchMapping("/{id}/liberar")
     public ResponseEntity<Probador> liberar(
             @PathVariable Integer id) {
@@ -192,6 +199,10 @@ public class ProbadorController {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT).build();
         }
+
+        // Guardar historial antes de liberar el probador
+        registroService.registrarFinOcupacion(
+                probador, false, "");
 
         probador.setEstado(EstadoProbador.LIBRE);
         probador.setInicioOcupacion(null);
@@ -244,7 +255,4 @@ public class ProbadorController {
         return ResponseEntity.ok(
                 probadorRepository.save(probador));
     }
-
-
 }
-
