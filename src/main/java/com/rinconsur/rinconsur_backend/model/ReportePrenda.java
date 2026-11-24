@@ -38,9 +38,9 @@ public class ReportePrenda {
     @JsonIgnore
     private Probador probador;
 
-    @NotBlank(message = "La descripcion es obligatoria")
+    @NotNull(message = "La descripcion no puede ser nula")
     @Column(nullable = false, columnDefinition = "TEXT")
-    private String descripcion;
+    private String descripcion = "";
 
     @Column(name = "foto_uri", columnDefinition = "TEXT")
     private String fotoUri;
