@@ -31,3 +31,5 @@ build/
 
 ### VS Code ###
 .vscode/
+# Fotografias almacenadas localmente
+/uploads/
