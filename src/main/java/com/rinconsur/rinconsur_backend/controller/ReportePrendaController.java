@@ -2,12 +2,16 @@
 package com.rinconsur.rinconsur_backend.controller;
 
 import com.rinconsur.rinconsur_backend.model.ReportePrenda;
+import com.rinconsur.rinconsur_backend.model.Probador;
+import com.rinconsur.rinconsur_backend.model.EstadoProbador;
 import com.rinconsur.rinconsur_backend.repository.ReportePrendaRepository;
 import com.rinconsur.rinconsur_backend.repository.ProbadorRepository;
 import com.rinconsur.rinconsur_backend.dto.ReportePrendaRequest;
+import com.rinconsur.rinconsur_backend.service.RegistroOcupacionService;
 
 import jakarta.validation.Valid;
 
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,13 +24,16 @@ public class ReportePrendaController {
 
     private final ReportePrendaRepository reporteRepository;
     private final ProbadorRepository probadorRepository;
+    private final RegistroOcupacionService registroService;
 
     public ReportePrendaController(
             ReportePrendaRepository reporteRepository,
-            ProbadorRepository probadorRepository) {
+            ProbadorRepository probadorRepository,
+            RegistroOcupacionService registroService) {
 
         this.reporteRepository = reporteRepository;
         this.probadorRepository = probadorRepository;
+        this.registroService = registroService;
     }
 
     @GetMapping
@@ -69,14 +76,35 @@ public class ReportePrendaController {
                                 desde, hasta));
     }
 
+    @Transactional
     @PostMapping
     public ResponseEntity<ReportePrenda> crear(
             @Valid @RequestBody ReportePrendaRequest request) {
 
-        if (!probadorRepository.existsById(
-                request.probadorId())) {
+        Probador probador = probadorRepository
+                .findById(request.probadorId())
+                .orElse(null);
 
+        if (probador == null) {
             return ResponseEntity.badRequest().build();
+        }
+
+        if (probador.getEstado() == EstadoProbador.OCUPADO
+                && probador.getInicioOcupacion() != null) {
+
+            registroService.registrarFinOcupacion(
+                    probador,
+                    true,
+                    "Prenda olvidada en el probador"
+            );
+
+            probador.setEstado(
+                    EstadoProbador.PRENDA_OLVIDADA);
+
+            probador.setInicioOcupacion(null);
+            probador.setCantidadPrendas(0);
+
+            probadorRepository.save(probador);
         }
 
         ReportePrenda reporte = new ReportePrenda();
