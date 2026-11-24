@@ -39,11 +39,13 @@ public class ProbadorController {
         this.registroService = registroService;
     }
 
+    // Listar todos los probadores
     @GetMapping
     public List<Probador> listar() {
         return probadorRepository.findAll();
     }
 
+    // Buscar probador por ID
     @GetMapping("/{id}")
     public ResponseEntity<Probador> buscarPorId(
             @PathVariable Integer id) {
@@ -54,6 +56,7 @@ public class ProbadorController {
                         ResponseEntity.notFound().build());
     }
 
+    // Listar probadores por sede
     @GetMapping("/sede/{sedeId}")
     public List<Probador> listarPorSede(
             @PathVariable Integer sedeId) {
@@ -62,6 +65,7 @@ public class ProbadorController {
                 .findBySedeIdOrderByNumeroAsc(sedeId);
     }
 
+    // Listar probadores por sede y estado
     @GetMapping("/sede/{sedeId}/estado/{estado}")
     public List<Probador> listarPorEstado(
             @PathVariable Integer sedeId,
@@ -71,6 +75,7 @@ public class ProbadorController {
                 .findBySedeIdAndEstado(sedeId, estado);
     }
 
+    // Crear un probador
     @PostMapping
     public ResponseEntity<Probador> crear(
             @Valid @RequestBody Probador probador) {
@@ -97,6 +102,7 @@ public class ProbadorController {
                 .body(probadorRepository.save(probador));
     }
 
+    // Actualizar un probador
     @PutMapping("/{id}")
     public ResponseEntity<Probador> actualizar(
             @PathVariable Integer id,
@@ -137,6 +143,7 @@ public class ProbadorController {
                 probadorRepository.save(existente));
     }
 
+    // Eliminar un probador
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(
             @PathVariable Integer id) {
@@ -158,6 +165,7 @@ public class ProbadorController {
         return ResponseEntity.noContent().build();
     }
 
+    // Ocupar un probador
     @PatchMapping("/{id}/ocupar")
     public ResponseEntity<Probador> ocupar(
             @PathVariable Integer id,
@@ -183,6 +191,7 @@ public class ProbadorController {
                 probadorRepository.save(probador));
     }
 
+    // Liberar un probador y guardar su historial
     @Transactional
     @PatchMapping("/{id}/liberar")
     public ResponseEntity<Probador> liberar(
@@ -200,9 +209,11 @@ public class ProbadorController {
                     .status(HttpStatus.CONFLICT).build();
         }
 
-        // Guardar historial antes de liberar el probador
+        // Guardar historial antes de liberar
         registroService.registrarFinOcupacion(
-                probador, false, "");
+                probador,
+                false,
+                "");
 
         probador.setEstado(EstadoProbador.LIBRE);
         probador.setInicioOcupacion(null);
@@ -212,6 +223,8 @@ public class ProbadorController {
                 probadorRepository.save(probador));
     }
 
+    // Cambiar estado y registrar prendas olvidadas
+    @Transactional
     @PatchMapping("/{id}/estado")
     public ResponseEntity<Probador> cambiarEstado(
             @PathVariable Integer id,
@@ -246,6 +259,17 @@ public class ProbadorController {
         if (!permitido) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT).build();
+        }
+
+        // Guardar historial si la ocupacion termina
+        // con una prenda olvidada
+        if (actual == EstadoProbador.OCUPADO
+                && nuevo == EstadoProbador.PRENDA_OLVIDADA) {
+
+            registroService.registrarFinOcupacion(
+                    probador,
+                    true,
+                    "Prenda olvidada en el probador");
         }
 
         probador.setEstado(nuevo);
