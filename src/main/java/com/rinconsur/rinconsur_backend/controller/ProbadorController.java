@@ -3,6 +3,7 @@ package com.rinconsur.rinconsur_backend.controller;
 
 import com.rinconsur.rinconsur_backend.dto.OcupacionRequest;
 
+import com.rinconsur.rinconsur_backend.dto.EstadoProbadorRequest;
 
 import com.rinconsur.rinconsur_backend.model.Probador;
 import com.rinconsur.rinconsur_backend.model.EstadoProbador;
@@ -193,6 +194,50 @@ public class ProbadorController {
         }
 
         probador.setEstado(EstadoProbador.LIBRE);
+        probador.setInicioOcupacion(null);
+        probador.setCantidadPrendas(0);
+
+        return ResponseEntity.ok(
+                probadorRepository.save(probador));
+    }
+
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<Probador> cambiarEstado(
+            @PathVariable Integer id,
+            @Valid @RequestBody EstadoProbadorRequest request) {
+
+        Probador probador = probadorRepository
+                .findById(id).orElse(null);
+
+        if (probador == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        EstadoProbador actual = probador.getEstado();
+        EstadoProbador nuevo = request.estado();
+
+        boolean permitido = switch (actual) {
+
+            case LIBRE ->
+                    nuevo == EstadoProbador.FUERA_DE_SERVICIO
+                    || nuevo == EstadoProbador.PRENDA_OLVIDADA;
+
+            case OCUPADO ->
+                    nuevo == EstadoProbador.PRENDA_OLVIDADA;
+
+            case PRENDA_OLVIDADA ->
+                    nuevo == EstadoProbador.LIBRE;
+
+            case FUERA_DE_SERVICIO ->
+                    nuevo == EstadoProbador.LIBRE;
+        };
+
+        if (!permitido) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT).build();
+        }
+
+        probador.setEstado(nuevo);
         probador.setInicioOcupacion(null);
         probador.setCantidadPrendas(0);
 
