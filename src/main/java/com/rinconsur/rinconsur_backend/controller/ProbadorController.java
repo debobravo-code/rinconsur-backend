@@ -1,6 +1,9 @@
 
 package com.rinconsur.rinconsur_backend.controller;
 
+import com.rinconsur.rinconsur_backend.dto.OcupacionRequest;
+
+
 import com.rinconsur.rinconsur_backend.model.Probador;
 import com.rinconsur.rinconsur_backend.model.EstadoProbador;
 import com.rinconsur.rinconsur_backend.repository.ProbadorRepository;
@@ -147,4 +150,31 @@ public class ProbadorController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/ocupar")
+    public ResponseEntity<Probador> ocupar(
+            @PathVariable Integer id,
+            @Valid @RequestBody OcupacionRequest request) {
+
+        Probador probador = probadorRepository
+                .findById(id).orElse(null);
+
+        if (probador == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (probador.getEstado() != EstadoProbador.LIBRE) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT).build();
+        }
+
+        probador.setEstado(EstadoProbador.OCUPADO);
+        probador.setInicioOcupacion(System.currentTimeMillis());
+        probador.setCantidadPrendas(request.cantidadPrendas());
+
+        return ResponseEntity.ok(
+                probadorRepository.save(probador));
+    }
+
 }
+
