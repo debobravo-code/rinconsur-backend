@@ -8,6 +8,7 @@ import com.rinconsur.rinconsur_backend.repository.ReportePrendaRepository;
 import com.rinconsur.rinconsur_backend.repository.ProbadorRepository;
 import com.rinconsur.rinconsur_backend.dto.ReportePrendaRequest;
 import com.rinconsur.rinconsur_backend.service.RegistroOcupacionService;
+import com.rinconsur.rinconsur_backend.service.FotoReferenciaService;
 
 import jakarta.validation.Valid;
 
@@ -25,15 +26,18 @@ public class ReportePrendaController {
     private final ReportePrendaRepository reporteRepository;
     private final ProbadorRepository probadorRepository;
     private final RegistroOcupacionService registroService;
+    private final FotoReferenciaService fotoReferenciaService;
 
     public ReportePrendaController(
             ReportePrendaRepository reporteRepository,
             ProbadorRepository probadorRepository,
-            RegistroOcupacionService registroService) {
+            RegistroOcupacionService registroService,
+            FotoReferenciaService fotoReferenciaService) {
 
         this.reporteRepository = reporteRepository;
         this.probadorRepository = probadorRepository;
         this.registroService = registroService;
+        this.fotoReferenciaService = fotoReferenciaService;
     }
 
     @GetMapping
@@ -89,6 +93,9 @@ public class ReportePrendaController {
             return ResponseEntity.badRequest().build();
         }
 
+        String fotoUri = fotoReferenciaService
+                .validar(request.fotoUri());
+
         if (probador.getEstado() == EstadoProbador.OCUPADO
                 && probador.getInicioOcupacion() != null) {
 
@@ -111,7 +118,7 @@ public class ReportePrendaController {
 
         reporte.setProbadorId(request.probadorId());
         reporte.setDescripcion(request.descripcion().trim());
-        reporte.setFotoUri(request.fotoUri());
+        reporte.setFotoUri(fotoUri);
         reporte.setFechaMillis(System.currentTimeMillis());
 
         return ResponseEntity
@@ -119,6 +126,7 @@ public class ReportePrendaController {
                 .body(reporteRepository.save(reporte));
     }
 
+    @Transactional
     @PutMapping("/{id}")
     public ResponseEntity<ReportePrenda> actualizar(
             @PathVariable Integer id,
@@ -138,9 +146,12 @@ public class ReportePrendaController {
             return ResponseEntity.badRequest().build();
         }
 
+        String fotoUri = fotoReferenciaService
+                .validar(request.fotoUri());
+
         reporte.setProbadorId(request.probadorId());
         reporte.setDescripcion(request.descripcion().trim());
-        reporte.setFotoUri(request.fotoUri());
+        reporte.setFotoUri(fotoUri);
 
         return ResponseEntity.ok(
                 reporteRepository.save(reporte));
