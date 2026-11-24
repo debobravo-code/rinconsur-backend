@@ -1,0 +1,150 @@
+
+package com.rinconsur.rinconsur_backend.controller;
+
+import com.rinconsur.rinconsur_backend.model.Probador;
+import com.rinconsur.rinconsur_backend.model.EstadoProbador;
+import com.rinconsur.rinconsur_backend.repository.ProbadorRepository;
+import com.rinconsur.rinconsur_backend.repository.SedeRepository;
+
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/probadores")
+public class ProbadorController {
+
+    private final ProbadorRepository probadorRepository;
+    private final SedeRepository sedeRepository;
+
+    public ProbadorController(
+            ProbadorRepository probadorRepository,
+            SedeRepository sedeRepository) {
+
+        this.probadorRepository = probadorRepository;
+        this.sedeRepository = sedeRepository;
+    }
+
+    @GetMapping
+    public List<Probador> listar() {
+        return probadorRepository.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Probador> buscarPorId(
+            @PathVariable Integer id) {
+
+        return probadorRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() ->
+                        ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/sede/{sedeId}")
+    public List<Probador> listarPorSede(
+            @PathVariable Integer sedeId) {
+
+        return probadorRepository
+                .findBySedeIdOrderByNumeroAsc(sedeId);
+    }
+
+    @GetMapping("/sede/{sedeId}/estado/{estado}")
+    public List<Probador> listarPorEstado(
+            @PathVariable Integer sedeId,
+            @PathVariable EstadoProbador estado) {
+
+        return probadorRepository
+                .findBySedeIdAndEstado(sedeId, estado);
+    }
+
+    @PostMapping
+    public ResponseEntity<Probador> crear(
+            @Valid @RequestBody Probador probador) {
+
+        if (!sedeRepository.existsById(probador.getSedeId())) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        if (probadorRepository.existsBySedeIdAndNumero(
+                probador.getSedeId(),
+                probador.getNumero())) {
+
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT).build();
+        }
+
+        probador.setId(null);
+        probador.setEstado(EstadoProbador.LIBRE);
+        probador.setInicioOcupacion(null);
+        probador.setCantidadPrendas(0);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(probadorRepository.save(probador));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Probador> actualizar(
+            @PathVariable Integer id,
+            @Valid @RequestBody Probador datos) {
+
+        Probador existente = probadorRepository
+                .findById(id).orElse(null);
+
+        if (existente == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (!sedeRepository.existsById(datos.getSedeId())) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        boolean duplicado = probadorRepository
+                .findBySedeIdAndNumero(
+                        datos.getSedeId(),
+                        datos.getNumero())
+                .filter(p -> !p.getId().equals(id))
+                .isPresent();
+
+        if (duplicado) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT).build();
+        }
+
+        if (existente.getEstado() != EstadoProbador.LIBRE) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT).build();
+        }
+
+        existente.setNumero(datos.getNumero());
+        existente.setSedeId(datos.getSedeId());
+
+        return ResponseEntity.ok(
+                probadorRepository.save(existente));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Integer id) {
+
+        Probador probador = probadorRepository
+                .findById(id).orElse(null);
+
+        if (probador == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (probador.getEstado() != EstadoProbador.LIBRE) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT).build();
+        }
+
+        probadorRepository.delete(probador);
+
+        return ResponseEntity.noContent().build();
+    }
+}
