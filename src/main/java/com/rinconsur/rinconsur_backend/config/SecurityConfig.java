@@ -43,6 +43,24 @@ public class SecurityConfig {
                     "/api/sedes", "/api/sedes/**"
                 ).hasRole("ADMIN")
 
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/probadores",
+                    "/api/probadores/**"
+                ).hasAnyRole("ADMIN", "PERSONAL")
+
+                .requestMatchers(
+                    HttpMethod.PATCH,
+                    "/api/probadores/*/ocupar",
+                    "/api/probadores/*/liberar",
+                    "/api/probadores/*/estado"
+                ).hasAnyRole("ADMIN", "PERSONAL")
+
+                .requestMatchers(
+                    "/api/probadores",
+                    "/api/probadores/**"
+                ).hasRole("ADMIN")
+
                 .anyRequest().denyAll()
             )
 
