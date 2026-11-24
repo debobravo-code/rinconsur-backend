@@ -1,9 +1,11 @@
 
 package com.rinconsur.rinconsur_backend.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public record ReportePrendaRequest(
 
@@ -11,10 +13,23 @@ public record ReportePrendaRequest(
     @Positive(message = "El ID del probador debe ser positivo")
     Integer probadorId,
 
-    @NotBlank(message = "La descripcion es obligatoria")
+    @NotNull(message = "La descripcion no puede ser nula")
     String descripcion,
 
     String fotoUri
 
 ) {
+
+    @AssertTrue(message = "Debe agregar una descripcion o una fotografia")
+    @JsonIgnore
+    public boolean isContenidoValido() {
+
+        boolean tieneDescripcion =
+                descripcion != null && !descripcion.isBlank();
+
+        boolean tieneFoto =
+                fotoUri != null && !fotoUri.isBlank();
+
+        return tieneDescripcion || tieneFoto;
+    }
 }
