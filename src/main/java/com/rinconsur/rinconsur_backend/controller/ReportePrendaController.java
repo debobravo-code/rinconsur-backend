@@ -1,6 +1,6 @@
-
 package com.rinconsur.rinconsur_backend.controller;
 
+import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 import com.rinconsur.rinconsur_backend.model.ReportePrenda;
 import com.rinconsur.rinconsur_backend.model.Probador;
 import com.rinconsur.rinconsur_backend.model.EstadoProbador;
@@ -45,6 +45,13 @@ public class ReportePrendaController {
         this.fotoLimpiezaService = fotoLimpiezaService;
     }
 
+    // Buscar reporte o generar error 404
+    private ReportePrenda obtenerReporte(Integer id) {
+        return reporteRepository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Reporte no encontrado"));
+    }
+
     @GetMapping
     public List<ReportePrenda> listar() {
         return reporteRepository
@@ -55,10 +62,7 @@ public class ReportePrendaController {
     public ResponseEntity<ReportePrenda> buscarPorId(
             @PathVariable Integer id) {
 
-        return reporteRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() ->
-                        ResponseEntity.notFound().build());
+        return ResponseEntity.ok(obtenerReporte(id));
     }
 
     @GetMapping("/probador/{probadorId}")
@@ -66,8 +70,7 @@ public class ReportePrendaController {
             @PathVariable Integer probadorId) {
 
         return reporteRepository
-                .findByProbadorIdOrderByFechaMillisDesc(
-                        probadorId);
+                .findByProbadorIdOrderByFechaMillisDesc(probadorId);
     }
 
     @GetMapping("/fechas")
@@ -110,9 +113,7 @@ public class ReportePrendaController {
                     "Prenda olvidada en el probador"
             );
 
-            probador.setEstado(
-                    EstadoProbador.PRENDA_OLVIDADA);
-
+            probador.setEstado(EstadoProbador.PRENDA_OLVIDADA);
             probador.setInicioOcupacion(null);
             probador.setCantidadPrendas(0);
 
@@ -126,8 +127,7 @@ public class ReportePrendaController {
         reporte.setFotoUri(fotoUri);
         reporte.setFechaMillis(System.currentTimeMillis());
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(reporteRepository.save(reporte));
     }
 
@@ -137,17 +137,9 @@ public class ReportePrendaController {
             @PathVariable Integer id,
             @Valid @RequestBody ReportePrendaRequest request) {
 
-        ReportePrenda reporte = reporteRepository
-                .findById(id)
-                .orElse(null);
+        ReportePrenda reporte = obtenerReporte(id);
 
-        if (reporte == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        if (!probadorRepository.existsById(
-                request.probadorId())) {
-
+        if (!probadorRepository.existsById(request.probadorId())) {
             return ResponseEntity.badRequest().build();
         }
 
@@ -164,7 +156,6 @@ public class ReportePrendaController {
                 reporteRepository.save(reporte);
 
         if (!Objects.equals(fotoAnterior, fotoNueva)) {
-
             fotoLimpiezaService
                     .limpiarDespuesDeCommit(fotoAnterior);
         }
@@ -177,13 +168,7 @@ public class ReportePrendaController {
     public ResponseEntity<Void> eliminar(
             @PathVariable Integer id) {
 
-        ReportePrenda reporte = reporteRepository
-                .findById(id)
-                .orElse(null);
-
-        if (reporte == null) {
-            return ResponseEntity.notFound().build();
-        }
+        ReportePrenda reporte = obtenerReporte(id);
 
         String fotoAnterior = reporte.getFotoUri();
 

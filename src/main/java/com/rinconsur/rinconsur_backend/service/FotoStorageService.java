@@ -1,5 +1,6 @@
-
 package com.rinconsur.rinconsur_backend.service;
+
+import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -104,8 +105,7 @@ public class FotoStorageService {
             if (!Files.isRegularFile(archivo)
                     || !recurso.isReadable()) {
 
-                throw new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
+                throw new ResourceNotFoundException(
                         "Fotografia no encontrada");
             }
 

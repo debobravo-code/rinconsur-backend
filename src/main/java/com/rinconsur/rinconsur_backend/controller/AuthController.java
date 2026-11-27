@@ -1,14 +1,13 @@
-
 package com.rinconsur.rinconsur_backend.controller;
 
 import com.rinconsur.rinconsur_backend.dto.LoginRequest;
+import com.rinconsur.rinconsur_backend.exception.UnauthorizedException;
 import com.rinconsur.rinconsur_backend.model.User;
 import com.rinconsur.rinconsur_backend.repository.UserRepository;
 
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,14 +15,13 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthController(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+            UserRepository userRepository) {
 
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+        
     }
 
     @PostMapping("/login")
@@ -32,20 +30,12 @@ public class AuthController {
 
         User user = userRepository
                 .findByEmail(request.email())
-                .orElse(null);
-
-        if (user == null) {
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .build();
-        }
+                .orElseThrow(() ->
+                    new UnauthorizedException("Credenciales incorrectas"));
 
         if (!passwordEncoder.matches(
                 request.password(), user.getPassword())) {
-
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .build();
+            throw new UnauthorizedException("Credenciales incorrectas");
         }
 
         return ResponseEntity.ok(user);

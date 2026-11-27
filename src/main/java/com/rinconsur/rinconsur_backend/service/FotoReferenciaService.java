@@ -1,5 +1,6 @@
-
 package com.rinconsur.rinconsur_backend.service;
+
+import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
@@ -38,16 +39,11 @@ public class FotoReferenciaService {
 
             fotoStorageService.cargar(nombreArchivo);
 
-        } catch (ResponseStatusException e) {
+        } catch (ResourceNotFoundException e) {
 
-            if (e.getStatusCode().value() == 404) {
-
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "La fotografia indicada no existe");
-            }
-
-            throw e;
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "La fotografia indicada no existe");
         }
 
         return PREFIJO + nombreArchivo;

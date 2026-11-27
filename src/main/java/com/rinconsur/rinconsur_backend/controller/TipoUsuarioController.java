@@ -1,6 +1,7 @@
-
 package com.rinconsur.rinconsur_backend.controller;
 
+import com.rinconsur.rinconsur_backend.exception.ConflictException;
+import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 import com.rinconsur.rinconsur_backend.model.TipoUsuario;
 import com.rinconsur.rinconsur_backend.repository.TipoUsuarioRepository;
 
@@ -30,9 +31,12 @@ public class TipoUsuarioController {
     // Buscar tipo de usuario por ID
     @GetMapping("/{id}")
     public ResponseEntity<TipoUsuario> buscarPorId(@PathVariable Integer id) {
-        return repository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+
+        TipoUsuario tipoUsuario = repository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Tipo de usuario no encontrado"));
+
+        return ResponseEntity.ok(tipoUsuario);
     }
 
     // Crear tipo de usuario
@@ -41,7 +45,7 @@ public class TipoUsuarioController {
             @Valid @RequestBody TipoUsuario tipoUsuario) {
 
         if (repository.existsByTipoUsuario(tipoUsuario.getTipoUsuario())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("El tipo de usuario ya existe");
         }
 
         tipoUsuario.setId(null);
@@ -56,11 +60,9 @@ public class TipoUsuarioController {
             @PathVariable Integer id,
             @Valid @RequestBody TipoUsuario datos) {
 
-        TipoUsuario existente = repository.findById(id).orElse(null);
-
-        if (existente == null) {
-            return ResponseEntity.notFound().build();
-        }
+        TipoUsuario existente = repository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Tipo de usuario no encontrado"));
 
         if (id.equals(TipoUsuario.ID_ADMINISTRADOR)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -71,7 +73,7 @@ public class TipoUsuarioController {
                 .orElse(null);
 
         if (duplicado != null && !duplicado.getId().equals(id)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("El tipo de usuario ya existe");
         }
 
         existente.setTipoUsuario(datos.getTipoUsuario());
@@ -84,7 +86,7 @@ public class TipoUsuarioController {
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
 
         if (!repository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Tipo de usuario no encontrado");
         }
 
         if (id.equals(TipoUsuario.ID_ADMINISTRADOR)) {

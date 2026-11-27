@@ -1,6 +1,7 @@
-
 package com.rinconsur.rinconsur_backend.controller;
 
+import com.rinconsur.rinconsur_backend.exception.ConflictException;
+import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 import com.rinconsur.rinconsur_backend.model.Probador;
 import com.rinconsur.rinconsur_backend.model.EstadoProbador;
 import com.rinconsur.rinconsur_backend.repository.ProbadorRepository;
@@ -39,6 +40,13 @@ public class ProbadorController {
         this.reporteRepository = reporteRepository;
     }
 
+    // Buscar probador o generar error 404
+    private Probador obtenerProbador(Integer id) {
+        return probadorRepository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Probador no encontrado"));
+    }
+
     @GetMapping
     public List<Probador> listar() {
         return probadorRepository.findAll();
@@ -48,10 +56,7 @@ public class ProbadorController {
     public ResponseEntity<Probador> buscarPorId(
             @PathVariable Integer id) {
 
-        return probadorRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() ->
-                        ResponseEntity.notFound().build());
+        return ResponseEntity.ok(obtenerProbador(id));
     }
 
     @GetMapping("/sede/{sedeId}")
@@ -75,18 +80,13 @@ public class ProbadorController {
     public ResponseEntity<Probador> crear(
             @Valid @RequestBody Probador probador) {
 
-        if (!sedeRepository.existsById(
-                probador.getSedeId())) {
-
+        if (!sedeRepository.existsById(probador.getSedeId())) {
             return ResponseEntity.badRequest().build();
         }
 
         if (probadorRepository.existsBySedeIdAndNumero(
-                probador.getSedeId(),
-                probador.getNumero())) {
-
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT).build();
+                probador.getSedeId(), probador.getNumero())) {
+            throw new ConflictException("El numero de probador ya existe en esta sede");
         }
 
         probador.setId(null);
@@ -94,8 +94,7 @@ public class ProbadorController {
         probador.setInicioOcupacion(null);
         probador.setCantidadPrendas(0);
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(probadorRepository.save(probador));
     }
 
@@ -104,17 +103,9 @@ public class ProbadorController {
             @PathVariable Integer id,
             @Valid @RequestBody Probador datos) {
 
-        Probador existente = probadorRepository
-                .findById(id)
-                .orElse(null);
+        Probador existente = obtenerProbador(id);
 
-        if (existente == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        if (!sedeRepository.existsById(
-                datos.getSedeId())) {
-
+        if (!sedeRepository.existsById(datos.getSedeId())) {
             return ResponseEntity.badRequest().build();
         }
 
@@ -126,20 +117,17 @@ public class ProbadorController {
                 .isPresent();
 
         if (duplicado) {
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("El numero de probador ya existe en esta sede");
         }
 
         if (existente.getEstado() != EstadoProbador.LIBRE) {
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("Solo se pueden modificar probadores libres");
         }
 
         existente.setNumero(datos.getNumero());
         existente.setSedeId(datos.getSedeId());
 
-        return ResponseEntity.ok(
-                probadorRepository.save(existente));
+        return ResponseEntity.ok(probadorRepository.save(existente));
     }
 
     @Transactional
@@ -147,24 +135,14 @@ public class ProbadorController {
     public ResponseEntity<Void> eliminar(
             @PathVariable Integer id) {
 
-        Probador probador = probadorRepository
-                .findById(id)
-                .orElse(null);
-
-        if (probador == null) {
-            return ResponseEntity.notFound().build();
-        }
+        Probador probador = obtenerProbador(id);
 
         if (probador.getEstado() != EstadoProbador.LIBRE) {
-
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("Solo se pueden eliminar probadores libres");
         }
 
         if (reporteRepository.existsByProbadorId(id)) {
-
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("El probador tiene reportes asociados");
         }
 
         probadorRepository.delete(probador);
@@ -177,28 +155,17 @@ public class ProbadorController {
             @PathVariable Integer id,
             @Valid @RequestBody OcupacionRequest request) {
 
-        Probador probador = probadorRepository
-                .findById(id)
-                .orElse(null);
-
-        if (probador == null) {
-            return ResponseEntity.notFound().build();
-        }
+        Probador probador = obtenerProbador(id);
 
         if (probador.getEstado() != EstadoProbador.LIBRE) {
-
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("El probador no esta disponible");
         }
 
         probador.setEstado(EstadoProbador.OCUPADO);
-        probador.setInicioOcupacion(
-                System.currentTimeMillis());
-        probador.setCantidadPrendas(
-                request.cantidadPrendas());
+        probador.setInicioOcupacion(System.currentTimeMillis());
+        probador.setCantidadPrendas(request.cantidadPrendas());
 
-        return ResponseEntity.ok(
-                probadorRepository.save(probador));
+        return ResponseEntity.ok(probadorRepository.save(probador));
     }
 
     @Transactional
@@ -206,18 +173,10 @@ public class ProbadorController {
     public ResponseEntity<Probador> liberar(
             @PathVariable Integer id) {
 
-        Probador probador = probadorRepository
-                .findById(id)
-                .orElse(null);
-
-        if (probador == null) {
-            return ResponseEntity.notFound().build();
-        }
+        Probador probador = obtenerProbador(id);
 
         if (probador.getEstado() != EstadoProbador.OCUPADO) {
-
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("El probador no esta ocupado");
         }
 
         registroService.registrarFinOcupacion(
@@ -227,8 +186,7 @@ public class ProbadorController {
         probador.setInicioOcupacion(null);
         probador.setCantidadPrendas(0);
 
-        return ResponseEntity.ok(
-                probadorRepository.save(probador));
+        return ResponseEntity.ok(probadorRepository.save(probador));
     }
 
     @Transactional
@@ -237,13 +195,7 @@ public class ProbadorController {
             @PathVariable Integer id,
             @Valid @RequestBody EstadoProbadorRequest request) {
 
-        Probador probador = probadorRepository
-                .findById(id)
-                .orElse(null);
-
-        if (probador == null) {
-            return ResponseEntity.notFound().build();
-        }
+        Probador probador = obtenerProbador(id);
 
         EstadoProbador actual = probador.getEstado();
         EstadoProbador nuevo = request.estado();
@@ -265,9 +217,7 @@ public class ProbadorController {
         };
 
         if (!permitido) {
-
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("Cambio de estado no permitido");
         }
 
         if (actual == EstadoProbador.OCUPADO
@@ -283,7 +233,6 @@ public class ProbadorController {
         probador.setInicioOcupacion(null);
         probador.setCantidadPrendas(0);
 
-        return ResponseEntity.ok(
-                probadorRepository.save(probador));
+        return ResponseEntity.ok(probadorRepository.save(probador));
     }
 }

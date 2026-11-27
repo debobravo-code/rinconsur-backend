@@ -1,6 +1,7 @@
-
 package com.rinconsur.rinconsur_backend.controller;
 
+import com.rinconsur.rinconsur_backend.exception.ConflictException;
+import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 import com.rinconsur.rinconsur_backend.model.User;
 import com.rinconsur.rinconsur_backend.repository.UserRepository;
 import com.rinconsur.rinconsur_backend.repository.TipoUsuarioRepository;
@@ -8,7 +9,7 @@ import com.rinconsur.rinconsur_backend.repository.TipoUsuarioRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,16 +20,15 @@ public class UserController {
 
     private final UserRepository repository;
     private final TipoUsuarioRepository tipoUsuarioRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public UserController(
             UserRepository repository,
-            TipoUsuarioRepository tipoUsuarioRepository,
-            PasswordEncoder passwordEncoder) {
+            TipoUsuarioRepository tipoUsuarioRepository) {
 
         this.repository = repository;
         this.tipoUsuarioRepository = tipoUsuarioRepository;
-        this.passwordEncoder = passwordEncoder;
+        
     }
 
     // Listar usuarios
@@ -40,9 +40,12 @@ public class UserController {
     // Buscar usuario por ID
     @GetMapping("/{id}")
     public ResponseEntity<User> buscarPorId(@PathVariable Integer id) {
-        return repository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+
+        User user = repository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Usuario no encontrado"));
+
+        return ResponseEntity.ok(user);
     }
 
     // Registrar usuario
@@ -50,7 +53,7 @@ public class UserController {
     public ResponseEntity<User> crear(@Valid @RequestBody User user) {
 
         if (repository.existsByEmail(user.getEmail())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("El correo ya existe");
         }
 
         if (!tipoUsuarioRepository.existsById(user.getTipoUsuarioId())) {
@@ -70,18 +73,16 @@ public class UserController {
             @PathVariable Integer id,
             @Valid @RequestBody User datos) {
 
-        User existente = repository.findById(id).orElse(null);
-
-        if (existente == null) {
-            return ResponseEntity.notFound().build();
-        }
+        User existente = repository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Usuario no encontrado"));
 
         User duplicado = repository
                 .findByEmail(datos.getEmail())
                 .orElse(null);
 
         if (duplicado != null && !duplicado.getId().equals(id)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new ConflictException("El correo ya existe");
         }
 
         if (!tipoUsuarioRepository.existsById(datos.getTipoUsuarioId())) {
@@ -103,7 +104,7 @@ public class UserController {
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
 
         if (!repository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Usuario no encontrado");
         }
 
         repository.deleteById(id);

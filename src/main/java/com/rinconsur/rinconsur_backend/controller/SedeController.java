@@ -1,6 +1,7 @@
-
 package com.rinconsur.rinconsur_backend.controller;
 
+import com.rinconsur.rinconsur_backend.exception.ConflictException;
+import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 import com.rinconsur.rinconsur_backend.model.Sede;
 import com.rinconsur.rinconsur_backend.repository.SedeRepository;
 
@@ -30,48 +31,48 @@ public class SedeController {
     // GET: buscar una sede por ID
     @GetMapping("/{id}")
     public ResponseEntity<Sede> buscarSede(@PathVariable Integer id) {
-        return sedeRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+
+        Sede sede = sedeRepository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Sede no encontrada"));
+
+        return ResponseEntity.ok(sede);
     }
 
     // POST: registrar una nueva sede
     @PostMapping
-    public ResponseEntity<?> crearSede(@Valid @RequestBody Sede sede) {
+    public ResponseEntity<Sede> crearSede(
+            @Valid @RequestBody Sede sede) {
 
         if (sedeRepository.existsByNombre(sede.getNombre())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("Ya existe una sede con ese nombre");
+            throw new ConflictException("Ya existe una sede con ese nombre");
         }
 
         sede.setId(null);
-        Sede guardada = sedeRepository.save(sede);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(guardada);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(sedeRepository.save(sede));
     }
 
     // PUT: actualizar una sede existente
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarSede(
+    public ResponseEntity<Sede> actualizarSede(
             @PathVariable Integer id,
             @Valid @RequestBody Sede datos) {
 
-        return sedeRepository.findById(id).map(sede -> {
+        Sede sede = sedeRepository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Sede no encontrada"));
 
-            if (!sede.getNombre().equals(datos.getNombre())
-                    && sedeRepository.existsByNombre(datos.getNombre())) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body((Object) "Ya existe una sede con ese nombre");
-            }
+        if (!sede.getNombre().equals(datos.getNombre())
+                && sedeRepository.existsByNombre(datos.getNombre())) {
+            throw new ConflictException("Ya existe una sede con ese nombre");
+        }
 
-            sede.setNombre(datos.getNombre());
-            sede.setTiempoAlerta(datos.getTiempoAlerta());
+        sede.setNombre(datos.getNombre());
+        sede.setTiempoAlerta(datos.getTiempoAlerta());
 
-            return ResponseEntity.ok(
-                    (Object) sedeRepository.save(sede)
-            );
-
-        }).orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(sedeRepository.save(sede));
     }
 
     // DELETE: eliminar una sede
@@ -79,10 +80,11 @@ public class SedeController {
     public ResponseEntity<Void> eliminarSede(@PathVariable Integer id) {
 
         if (!sedeRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Sede no encontrada");
         }
 
         sedeRepository.deleteById(id);
+
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,6 +1,6 @@
-
 package com.rinconsur.rinconsur_backend.controller;
 
+import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 import com.rinconsur.rinconsur_backend.model.RegistroOcupacion;
 import com.rinconsur.rinconsur_backend.repository.RegistroOcupacionRepository;
 
@@ -30,9 +30,11 @@ public class RegistroOcupacionController {
     public ResponseEntity<RegistroOcupacion> buscarPorId(
             @PathVariable Integer id) {
 
-        return registroRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        RegistroOcupacion registro = registroRepository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Registro no encontrado"));
+
+        return ResponseEntity.ok(registro);
     }
 
     @GetMapping("/sede/{sedeId}")
