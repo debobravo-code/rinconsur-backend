@@ -1,9 +1,11 @@
 package com.rinconsur.rinconsur_backend.controller;
 
+import com.rinconsur.rinconsur_backend.dto.RegistroEdicionRequest;
 import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 import com.rinconsur.rinconsur_backend.model.RegistroOcupacion;
 import com.rinconsur.rinconsur_backend.repository.RegistroOcupacionRepository;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -79,5 +81,25 @@ public class RegistroOcupacionController {
                 registroRepository
                     .findBySedeIdAndFinMillisBetweenOrderByFinMillisDesc(
                             sedeId, desde, hasta));
+    }
+
+    // PUT: corregir cantidad de prendas, prenda olvidada y observacion.
+    // La sede, el probador y los horarios no se pueden cambiar.
+    @PutMapping("/{id}")
+    public ResponseEntity<RegistroOcupacion> actualizar(
+            @PathVariable Integer id,
+            @Valid @RequestBody RegistroEdicionRequest request) {
+
+        RegistroOcupacion registro = registroRepository.findById(id)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException("Registro no encontrado"));
+
+        registro.setCantidadPrendas(request.cantidadPrendas());
+        registro.setPrendaOlvidada(request.prendaOlvidada());
+        registro.setObservacion(
+                request.observacion() == null
+                        ? "" : request.observacion().trim());
+
+        return ResponseEntity.ok(registroRepository.save(registro));
     }
 }

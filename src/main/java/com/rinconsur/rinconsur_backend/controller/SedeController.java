@@ -7,6 +7,7 @@ import com.rinconsur.rinconsur_backend.model.Sede;
 import com.rinconsur.rinconsur_backend.model.Probador;
 import com.rinconsur.rinconsur_backend.repository.SedeRepository;
 import com.rinconsur.rinconsur_backend.repository.ProbadorRepository;
+import com.rinconsur.rinconsur_backend.repository.UsuarioSedeRepository;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -22,13 +23,16 @@ public class SedeController {
 
     private final SedeRepository sedeRepository;
     private final ProbadorRepository probadorRepository;
+    private final UsuarioSedeRepository usuarioSedeRepository;
 
     public SedeController(
             SedeRepository sedeRepository,
-            ProbadorRepository probadorRepository) {
+            ProbadorRepository probadorRepository,
+            UsuarioSedeRepository usuarioSedeRepository) {
 
         this.sedeRepository = sedeRepository;
         this.probadorRepository = probadorRepository;
+        this.usuarioSedeRepository = usuarioSedeRepository;
     }
 
     // GET: obtener todas las sedes
@@ -133,6 +137,9 @@ public class SedeController {
             throw new ConflictException(
                     "No se puede eliminar una sede que tiene probadores");
         }
+
+        // Quita la sede de los usuarios que la tenian asignada
+        usuarioSedeRepository.deleteBySedeId(id);
 
         sedeRepository.deleteById(id);
 

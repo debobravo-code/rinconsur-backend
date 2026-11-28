@@ -120,8 +120,10 @@ public class ProbadorController {
             throw new ConflictException("El numero de probador ya existe en esta sede");
         }
 
-        if (existente.getEstado() != EstadoProbador.LIBRE) {
-            throw new ConflictException("Solo se pueden modificar probadores libres");
+        if (existente.getEstado() != EstadoProbador.LIBRE
+                && existente.getEstado() != EstadoProbador.FUERA_DE_SERVICIO) {
+            throw new ConflictException(
+                    "Solo se pueden modificar probadores libres o fuera de servicio");
         }
 
         existente.setNumero(datos.getNumero());

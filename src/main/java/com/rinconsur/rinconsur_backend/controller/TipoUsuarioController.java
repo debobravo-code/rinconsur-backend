@@ -4,6 +4,7 @@ import com.rinconsur.rinconsur_backend.exception.ConflictException;
 import com.rinconsur.rinconsur_backend.exception.ResourceNotFoundException;
 import com.rinconsur.rinconsur_backend.model.TipoUsuario;
 import com.rinconsur.rinconsur_backend.repository.TipoUsuarioRepository;
+import com.rinconsur.rinconsur_backend.repository.UserRepository;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -17,9 +18,14 @@ import java.util.List;
 public class TipoUsuarioController {
 
     private final TipoUsuarioRepository repository;
+    private final UserRepository userRepository;
 
-    public TipoUsuarioController(TipoUsuarioRepository repository) {
+    public TipoUsuarioController(
+            TipoUsuarioRepository repository,
+            UserRepository userRepository) {
+
         this.repository = repository;
+        this.userRepository = userRepository;
     }
 
     // Listar todos los tipos de usuario
@@ -91,6 +97,11 @@ public class TipoUsuarioController {
 
         if (id.equals(TipoUsuario.ID_ADMINISTRADOR)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        if (userRepository.existsByTipoUsuarioId(id)) {
+            throw new ConflictException(
+                    "No se puede eliminar: hay usuarios con ese tipo");
         }
 
         repository.deleteById(id);
