@@ -1,6 +1,6 @@
 # Probadores RinconSur – Backend (microservicio)
 
-**Integrantes:** Debora Bravo y Mikela Plama
+**Integrantes:** Debora Bravo y Mikela Palma
 **Asignatura:** Desarrollo de Aplicaciones Móviles (DSY1105) – Evaluación Parcial 4, Duoc UC
 
 Microservicio REST que guarda los datos de la app Android **Probadores RinconSur** en MySQL.
@@ -53,4 +53,4 @@ Las fotos de los reportes se guardan en la carpeta `uploads/reportes` (se puede 
 
 ## App Android
 
-El proyecto de la app (Kotlin + Compose + Room + Retrofit) está en el repositorio del frontend.
+Repositorio frontend: https://github.com/debobravo-code/Probadores_RinconSur
